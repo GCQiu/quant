@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 from dataset import SlidingWindowDataset,SlidingWindowDataset_test
-from models.transformer import TransformerModel,TransformerModel_NAT,TransformerModel_cls_reg,TransformerModel_gru
+from models.transformer import TransformerModel,TransformerModel_NAT,TransformerModel_cls_reg,TransformerModel_gru,TransformerModel_reg
 import numpy as np
 import logging
 from scipy.stats import zscore
@@ -46,9 +46,8 @@ def train(model,model_path,stock_feature):
 
 
     criterion_1 = nn.MSELoss()
-    criterion_2 = nn.L1Loss()
     #optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.001)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2, verbose=True)
 
 
@@ -61,20 +60,19 @@ def train(model,model_path,stock_feature):
             optimizer.zero_grad()
             src = src.to(device)  #N d L
             tgt = tgt.to(device)  #N d L
-            src = src[:,:,:20]
             #print(src.size(), tgt.size())
             #start = torch.zeros((tgt.shape[0],tgt.shape[1],1)).to(device)
-            output = model(src,None)  # L N d
+            output = model(src,src)  # L N d
             #output = output.permute(1, 2, 0)
             #loss = weighted_mse_loss(output, tgt[:,:,1:25],weight=0.6)
-            loss = criterion_1(output, tgt[:,:,20:25])
+            loss = criterion_1(output, tgt[:,:,-1].unsqueeze(1))
             loss.backward()
             optimizer.step()
 
             if (i + 1) % 10 == 0:
                 logger.info(
                     f'Epoch [{epoch + 1}/{num_epochs}], Iteration [{i + 1}/{len(train_dataloader)}], Loss: {loss.item():.4f}')
-                print(output[0,:,:],tgt[0,:,20:25])
+                print(output[0,:,:],tgt[0,:,-1])
         val_loss = val(model,logger,model_path=None,training=True,plot_save_path = model_path,device=device)
         scheduler.step(val_loss)
         logger.info(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
@@ -102,7 +100,6 @@ def train_NAT(model,model_path,stock_feature):
 
 
     criterion_1 = nn.MSELoss()
-    criterion_2 = nn.CrossEntropyLoss()
     #optimizer = optim.Adam(model.parameters(), lr=0.0001)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.001)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2, verbose=True,min_lr=0.00001,)
@@ -118,13 +115,12 @@ def train_NAT(model,model_path,stock_feature):
             optimizer.zero_grad()
             src = src.to(device)  #N d L
             tgt = tgt.to(device)  #N d L
-            src = src[:,:,:20]
             #print(src.size(), tgt.size())
             #start = torch.zeros((tgt.shape[0],tgt.shape[1],1)).to(device)
-            output = model(src,src)  # L N d
+            output = model(src,tgt[:,:,:-1])  # L N d
             #output = output.permute(0, 2, 1)
             #loss = weighted_mse_loss(output, tgt[:,:,1:25],weight=0.6)
-            loss = criterion_1(output, tgt[:,:,19].unsqueeze(-1))
+            loss = criterion_1(output, tgt[:,:,-1])
             #writer.add_scalar('training loss', loss, epoch * len(train_dataloader) + i)
             #loss = torch.sqrt(loss)
             loss.backward()
@@ -134,7 +130,8 @@ def train_NAT(model,model_path,stock_feature):
             if (i + 1) % 20 == 0:
                 logger.info(
                     f'Epoch [{epoch + 1}/{num_epochs}], Iteration [{i + 1}/{len(train_dataloader)}], Loss: {loss.item():.5f}')
-                print(output[0,:],tgt[0,:,19])
+                print(output[0,:].item(),tgt[0,:,-1].item())
+                print(output[1, :].item(), tgt[1, :, -1].item())
         val_loss = val_NAT(model,logger,epoch,model_path=None,training=True,plot_save_path = model_path,device=device)
         scheduler.step(val_loss)
         logger.info(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
@@ -204,10 +201,10 @@ if __name__ == '__main__':
     output_dim = 1  # 输出是收益率
     d_model = 256
     nhead = 8
-    num_encoder_layers = 3
-    num_decoder_layers = 3
+    num_encoder_layers = 2
+    num_decoder_layers = 2
     dim_feedforward = 512
-    dropout = 0.1
+    dropout = 0.2
     sequence_length = 10
     batch_size = 32
     num_epochs = 50
@@ -245,7 +242,7 @@ if __name__ == '__main__':
     # model = TransformerModel(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
     #                          dim_feedforward, dropout).to(device)
 
-    model = TransformerModel_NAT(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
+    model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
                                                      dim_feedforward, dropout).to(device)
 
     train_NAT(model,'./model_3layer_8head_19feature_v1/',stock_feature)

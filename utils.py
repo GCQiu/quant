@@ -96,32 +96,34 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path ,if_save_plot=
         'corre_result_zscore':[],
     }
     test_list = open('test_file.txt','r').readlines()
-    for csv in tqdm.tqdm(test_list):
+    for csv in tqdm.tqdm(test_list[0:20]):
             df = pd.read_csv(os.path.join(test_path, csv.strip()), index_col=0)
 
             test_df = df.tail(119).reset_index(drop=True)
             dec_input = df['y'].tail(119).copy().reset_index(drop=True)
             dec_input.loc[19:] = 0
+            dec_input[0:19] = zscore(dec_input[0:19])
             final_out = []
             final_out_zscore = []
-            dec_input[0:19] = zscore(dec_input[0:19])
-            max_val = max(dec_input)
-            min_val = min(dec_input)
-            dec_input[0:19] = (dec_input[0:19]-min_val)/(max_val-min_val)
+            # dec_input[0:19] = zscore(dec_input[0:19])
+            # max_val = max(dec_input)
+            # min_val = min(dec_input)
+            # dec_input[0:19] = (dec_input[0:19]-min_val)/(max_val-min_val)
             gt_y = []
             for i in range(0,len(test_df) - 20 + 1,1):
                 stocks_feature, y = test_dataset.test_preprocess_v1(test_df[i:i+20])
                 src = torch.tensor(np.array(stocks_feature),dtype=torch.float32).unsqueeze(0).to(device) #N d L
 
-                #tgt = torch.tensor(dec_input[i:i+19].values, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)  # N d L
+                tgt = torch.tensor(dec_input[i:i+19].values, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)  # N d L
 
-                output = model.forward(src, src)
+                output = model.forward(src, tgt)
+                #print(output)
                 final_out.append(output.item())
                 # final_out_zscore.append(reg.item()/10)
-                # dec_input[i+19] = reg.item()/10
+                dec_input[i+19] = output.item()
             fig, ax = plt.subplots(1,1)
             ax.plot([i for i in range(100)], np.array(final_out), label='predict', color='red')
-            ax.plot([i for i in range(100)], test_df['y'][19:]*10, label='y', color='blue')
+            ax.plot([i for i in range(100)], zscore(test_df['y'][19:]), label='y', color='blue')
             # ax[1].plot([i for i in range(100)], test_df['y'][19:], label='y_zscore', color='green')
             # ax[1].plot([i for i in range(100)], final_out_zscore, label='y', color='blue')
             ax.set_title(csv)

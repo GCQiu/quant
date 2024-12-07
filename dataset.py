@@ -18,13 +18,18 @@ class SlidingWindowDataset(Dataset):
         self.y = []
         self.min_max_scaler = MinMaxScaler()
 
+        test_list = os.listdir('./dataset_test_v0')
         # 读取文件夹中的所有CSV文件
         if is_training:
             for file_name in os.listdir(folder_path):
                 if file_name.endswith('.csv'):
                     file_path = os.path.join(folder_path, file_name)
                     df = pd.read_csv(file_path)
-                    self.data.append(df)
+                    if file_name in test_list:
+                        #print(len(df),len(df.iloc[:-100]))
+                        self.data.append(df.iloc[:-100])
+                    else:
+                        self.data.append(df)
                     # self.indices.extend(range(len(df) - window_size))
             print('stocks num:{}'.format(len(self.data)))
             # #v0
@@ -91,7 +96,7 @@ class SlidingWindowDataset(Dataset):
             #v1
             for stock in tqdm.tqdm(self.data,desc="loading data"):
                 for feature in self.stocks_feature.keys():
-                    for i in range(5,len(stock) - window_size + 1,5):
+                    for i in range(5,len(stock) - window_size + 1,1):
                         open = stock[feature][i:i + window_size]
                         self.stocks_feature[feature].append(open)
             print(f"num_samples {len(self.stocks_feature['open'])} num_y {len(self.y)}")
@@ -128,19 +133,19 @@ class SlidingWindowDataset(Dataset):
         EMA_20 = zscore(self.stocks_feature['EMA_20'][idx].values)
         input.append(EMA_20)
         # process rsi5
-        rsi5 = zscore(self.stocks_feature['rsi5'][idx])
+        rsi5 = zscore(self.stocks_feature['rsi5'][idx].values)
         input.append(rsi5)
         # process rsi10
-        rsi10 = zscore(self.stocks_feature['rsi10'][idx])
+        rsi10 = zscore(self.stocks_feature['rsi10'][idx].values)
         input.append(rsi10)
         # process rsi14
-        rsi14 = zscore(self.stocks_feature['rsi14'][idx])
+        rsi14 = zscore(self.stocks_feature['rsi14'][idx].values)
         input.append(rsi14)
         # process Return
         Return = zscore(self.stocks_feature['Return'][idx].values)
         input.append(Return)
         # process a_share_capital
-        a_share_capital_min_max = zscore(self.stocks_feature['a_share_capital_percentage'][idx].values)
+        a_share_capital_min_max = self.stocks_feature['a_share_capital_percentage'][idx].values
         input.append(a_share_capital_min_max)
         # process float_a_share_capital
         float_a_share_capital_min_max = zscore(
@@ -175,7 +180,7 @@ class SlidingWindowDataset(Dataset):
         # type = type / 2
         # input.append(type)
         sample = np.array(input)
-        label = self.stocks_feature['y'][idx].values * 10
+        label = zscore(self.stocks_feature['y'][idx].values)
 
 
         return torch.tensor(sample, dtype=torch.float32), torch.tensor(label, dtype=torch.float32).unsqueeze(0)

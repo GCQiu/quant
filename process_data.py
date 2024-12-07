@@ -372,20 +372,20 @@ def calculate_tailb_indicators(root_path):
 
 
 def split_train_test(root_path):
-    os.makedirs('./dataset_train_v0',exist_ok=True)
-    os.makedirs('./dataset_test_v0',exist_ok=True)
+    os.makedirs('./dataset_train_v1',exist_ok=True)
+    os.makedirs('./dataset_test_v1',exist_ok=True)
     for csv in tqdm.tqdm(os.listdir(root_path)):
         df = pd.read_csv(os.path.join(root_path,csv), skiprows=0,index_col=0)
         day_num = df.shape[0]
         #print(day_num)
         if 100/day_num <=0.3:
-            last_100_rows = df.tail(100)
+            #last_100_rows = df.tail(100)
             remaining_rows = df.iloc[:-100]
-            last_100_rows.to_csv("./dataset_test_v0/{}".format(csv))
-            remaining_rows.to_csv("./dataset_train_v0/{}".format(csv))
+            df.to_csv("./dataset_test_v1/{}".format(csv))
+            remaining_rows.to_csv("./dataset_train_v1/{}".format(csv))
         else:
-            df.to_csv("./dataset_train_v0/{}".format(csv))
-    print(len(os.listdir('./dataset_train_v0')),len(os.listdir('dataset_test_v0')))
+            df.to_csv("./dataset_train_v1/{}".format(csv))
+    print(len(os.listdir('./dataset_train_v1')),len(os.listdir('dataset_test_v1')))
     # intervals = [0, 10, 100, 1000, 10000]
     # intervals = [i * 10 ** 8 for i in intervals]
     # a_share_capital = []
@@ -421,7 +421,7 @@ if __name__ == '__main__':
     # print(len(os.listdir('./dataset_abandon')),len(os.listdir('./dataset_non_zero')))
     #date_num('./dataset')
     #percentage_up_down(root_path)
-    y_vis('./dataset_train_v0')
+    #y_vis('./dataset_train_v0')
     #process_y('./dataset_test_v0')
     #y_percentage_corre(root_path)
     #calculate_base_indicators(root_path='./dataset_test_v0',target_path = './dataset_test_v0')
@@ -429,7 +429,7 @@ if __name__ == '__main__':
     #dataset_clean()
     #print(len(os.listdir('./dataset_non_zero')),len(os.listdir('./dataset_zero')),len(os.listdir('./dataset')))
     # print(len(os.listdir('./dataset_temp')))
-    #split_train_test('./dataset_useful_case_v0_remove_y0')
+    split_train_test('./dataset_useful_case_v0_remove_y0')
     #y_vis('./dataset_test_v0')
     # os.makedirs('./dataset_test_v0_temp', exist_ok=True)
     # for csv in tqdm.tqdm(os.listdir('./dataset_test_v0')):
