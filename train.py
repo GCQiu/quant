@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 from dataset import SlidingWindowDataset,SlidingWindowDataset_test
-from models.transformer import TransformerModel,TransformerModel_NAT,TransformerModel_cls_reg,TransformerModel_gru,TransformerModel_reg
+from models.transformer import TransformerModel,TransformerModel_NAT,TransformerModel_reg
 import numpy as np
 import logging
 from scipy.stats import zscore
@@ -66,6 +66,7 @@ def train(model,model_path,stock_feature):
             #output = output.permute(1, 2, 0)
             #loss = weighted_mse_loss(output, tgt[:,:,1:25],weight=0.6)
             loss = criterion_1(output, tgt[:,:,-1].unsqueeze(1))
+            loss = torch.sqrt(loss)
             loss.backward()
             optimizer.step()
 
@@ -81,13 +82,10 @@ def train(model,model_path,stock_feature):
     # 保存模型
 
 
-def train_NAT(model,model_path,stock_feature):
-    batch_size = 64
-    num_epochs = 30
+def train_NAT(model,model_path,stock_feature,window_size,batch_size,num_epochs):
 
     folder_path = './dataset_train_v0'
     os.makedirs(model_path, exist_ok=True)
-    window_size = 20
 
 
     log_path = os.path.join(model_path, 'log')
@@ -101,7 +99,7 @@ def train_NAT(model,model_path,stock_feature):
 
     criterion_1 = nn.MSELoss()
     #optimizer = optim.Adam(model.parameters(), lr=0.0001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.5, patience=2, verbose=True,min_lr=0.00001,)
 
 
@@ -121,6 +119,9 @@ def train_NAT(model,model_path,stock_feature):
             #output = output.permute(0, 2, 1)
             #loss = weighted_mse_loss(output, tgt[:,:,1:25],weight=0.6)
             loss = criterion_1(output, tgt[:,:,-1])
+            has_nan = torch.isnan(loss).any()
+            if has_nan:
+                continue
             #writer.add_scalar('training loss', loss, epoch * len(train_dataloader) + i)
             #loss = torch.sqrt(loss)
             loss.backward()
@@ -132,10 +133,12 @@ def train_NAT(model,model_path,stock_feature):
                     f'Epoch [{epoch + 1}/{num_epochs}], Iteration [{i + 1}/{len(train_dataloader)}], Loss: {loss.item():.5f}')
                 print(output[0,:].item(),tgt[0,:,-1].item())
                 print(output[1, :].item(), tgt[1, :, -1].item())
-        val_loss = val_NAT(model,logger,epoch,model_path=None,training=True,plot_save_path = model_path,device=device)
-        scheduler.step(val_loss)
+        mse_loss,rmse_loss,corr,r2 = val_NAT(model,logger,epoch,window_size = window_size,stock_feature=stock_feature,
+                           model_path=None,training=True,plot_save_path = model_path,device=device)
+        scheduler.step(rmse_loss)
         logger.info(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
-        torch.save(model.state_dict(), './{}/transformer_epoch{}_{:.4f}.pth'.format(model_path,str(epoch), val_loss))
+        torch.save(model.state_dict(), './{}/model_epoch{}_{:.4f}_{:.4f}_{:.4f}_{:.4f}.pth'.\
+                   format(model_path,str(epoch), mse_loss,rmse_loss,corr,r2))
 
 
 # 加载模型
@@ -197,47 +200,76 @@ def test(model,model_path):
 
 
 if __name__ == '__main__':
-    input_dim = 19 # 假设输入包含开盘价、最高价、最低价、收盘价和成交量
-    output_dim = 1  # 输出是收益率
-    d_model = 256
-    nhead = 8
-    num_encoder_layers = 2
-    num_decoder_layers = 2
-    dim_feedforward = 512
-    dropout = 0.2
-    sequence_length = 10
-    batch_size = 32
-    num_epochs = 50
     stock_feature = {
+            # 基本量价因子
             'open':[],
             'close':[],
+            'high':[],
+            'low':[],
             'next_open':[],
-            'EMA_5':[],
-            'EMA_10':[],
-            'EMA_20':[],
-            'a_share_capital':[],
-            'a_share_capital_percentage': [],
-            'float_a_share_capital':[],
-            'float_a_share_capital_percentage': [],
-            'rsi5':[],
-            'rsi10': [],
-            'rsi14': [],
+            'volume': [],
+            'vwap':[],
+            'a_share_capital': [],
+            'float_a_share_capital': [],
+            'turnover_rate': [],
+            'turnover': [],
+            # 波动率因子
             'Return': [],
             'EMA_5_trend': [],
             'EMA_10_trend': [],
             'EMA_20_trend': [],
             'pseudo_y': [],
-            'volume': [],
-            'turnover_rate': [],
-            'turnover': [],
-            'type': [],
+            'low2high': [],
+            'klen': [],
+            'kup': [],
+            'klow': [],
+            'ksft': [],
+            'next_open_percentage': [],
+            'close_change': [],
+            'open_change': [],
+            'low_change': [],
+            'high_change': [],
+            'a_share_capital_percentage': [],
+            'float_a_share_capital_percentage': [],
+            'vwap_percentage': [],
+            'vwap2close':[],
+            #重叠因子
+            'EMA_5': [],
+            'EMA_10': [],
+            'EMA_20': [],
+            'boll_upper':[],
+            'boll_middle':[],
+            'boll_lower':[],
+            'mama':[],
+            'fama':[],
+            'sar':[],
+            'dif':[],
+            'dem':[],
+            'histogram':[],
+            'mom12':[],
+            'mom26':[],
+            #成交量因子
+            'ADOSC':[],
+            'obv':[],
+            #波动性因子
+            'natrPrice_5':[],
+            #'TRANGE':[],
             'y':[],
-            #'y_scaled': [],
-            'y_zscore': [],
-            #'y_normalized':[]
         }
+    input_dim = len(stock_feature.keys())-1+3  # 假设输入包含开盘价、最高价、最低价、收盘价和成交量
+    output_dim = 1  # 输出是收益率
+    d_model = 256
+    nhead = 16
+    num_encoder_layers = 2
+    num_decoder_layers = 2
+    dim_feedforward = 512
+    dropout = 0.2
+    sequence_length = 10
+    batch_size = 64
+    num_epochs = 30
+    window_size = 20
     global logger
-    logger = logging_system('training.log')
+    logger = logging_system('training_v1.log')
 
     # model = TransformerModel(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
     #                          dim_feedforward, dropout).to(device)
@@ -245,6 +277,6 @@ if __name__ == '__main__':
     model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
                                                      dim_feedforward, dropout).to(device)
 
-    train_NAT(model,'./model_3layer_8head_19feature_v1/',stock_feature)
+    train_NAT(model,'./model_2layer_16head_{}factor/'.format(input_dim),stock_feature,window_size,batch_size,num_epochs)
     #test(model,model_path='./model_6layer_13feature/transformer_epoch1_0.0492.pth')
     #loss = val(model,model_path='./model_6layer_13feature/transformer_epoch0_0.0004.pth',training=False)

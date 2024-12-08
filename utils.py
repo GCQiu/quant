@@ -10,6 +10,7 @@ from models.transformer import TransformerModel,TransformerModel_NAT
 import numpy as np
 import logging
 from scipy.stats import zscore
+from sklearn.metrics import r2_score
 from losses import weighted_mse_loss
 import matplotlib.pyplot as plt
 
@@ -72,7 +73,7 @@ def val(model,logger,model_path,training,plot_save_path ,if_save_plot=True,devic
             whole_result.append(rmse_loss)
     return sum(whole_result)/len(whole_result)
 
-def val_NAT(model,logger,epoch,model_path,training,plot_save_path ,if_save_plot=True,device=None):
+def val_NAT(model,logger,epoch,model_path,training,plot_save_path,stock_feature,window_size,if_save_plot=True,device=None):
     #model.load_state_dict(torch.load('transformer_model.pth'))
     if training:
         model.eval()
@@ -82,7 +83,7 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path ,if_save_plot=
     criterion_1 = nn.MSELoss()
     criterion_2 = nn.L1Loss()
     test_path = './dataset_test_v0'
-    test_dataset = SlidingWindowDataset(test_path, 30, None,None,is_training=False)
+    test_dataset = SlidingWindowDataset(test_path, window_size, None,stock_feature,is_training=False)
     whole_result = []
     if if_save_plot:
         plot_result = os.path.join(plot_save_path, 'plot_{}'.format(epoch))
@@ -91,47 +92,51 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path ,if_save_plot=
         'mse_result':[],
         'rmse_result':[],
         'corre_result':[],
+        'r2_result':[],
         'mse_result_zscore':[],
         'rmse_result_zscore':[],
         'corre_result_zscore':[],
+        'r2_result_zscore':[]
     }
+    gt_y_all = []
+    predict_all = []
     test_list = open('test_file.txt','r').readlines()
-    for csv in tqdm.tqdm(test_list[0:20]):
+    for csv in tqdm.tqdm(test_list[0:3]):
             df = pd.read_csv(os.path.join(test_path, csv.strip()), index_col=0)
 
-            test_df = df.tail(119).reset_index(drop=True)
-            dec_input = df['y'].tail(119).copy().reset_index(drop=True)
-            dec_input.loc[19:] = 0
-            dec_input[0:19] = zscore(dec_input[0:19])
+            test_df = df.tail(100+window_size-1).reset_index(drop=True)
+            dec_input = df['y'].tail(100+window_size-1).copy().reset_index(drop=True)
+            dec_input.loc[window_size-1:] = 0
+            #dec_input[0:19] = zscore(dec_input[0:19])
             final_out = []
-            final_out_zscore = []
-            # dec_input[0:19] = zscore(dec_input[0:19])
+            mean = dec_input[0:window_size].mean()
+            std = dec_input[0:window_size].std()
+            dec_input[0:window_size] = (dec_input[0:window_size]-mean)/std
             # max_val = max(dec_input)
             # min_val = min(dec_input)
             # dec_input[0:19] = (dec_input[0:19]-min_val)/(max_val-min_val)
-            gt_y = []
-            for i in range(0,len(test_df) - 20 + 1,1):
-                stocks_feature, y = test_dataset.test_preprocess_v1(test_df[i:i+20])
+            for i in range(0,len(test_df) - window_size + 1,1):
+                stocks_feature, y = test_dataset.test_preprocess_v1(test_df[i:i+window_size])
                 src = torch.tensor(np.array(stocks_feature),dtype=torch.float32).unsqueeze(0).to(device) #N d L
-
-                tgt = torch.tensor(dec_input[i:i+19].values, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)  # N d L
+                tgt = torch.tensor(dec_input[i:i+window_size].values, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)  # N d L
 
                 output = model.forward(src, tgt)
-                #print(output)
                 final_out.append(output.item())
-                # final_out_zscore.append(reg.item()/10)
-                dec_input[i+19] = output.item()
-            fig, ax = plt.subplots(1,1)
-            ax.plot([i for i in range(100)], np.array(final_out), label='predict', color='red')
-            ax.plot([i for i in range(100)], zscore(test_df['y'][19:]), label='y', color='blue')
-            # ax[1].plot([i for i in range(100)], test_df['y'][19:], label='y_zscore', color='green')
-            # ax[1].plot([i for i in range(100)], final_out_zscore, label='y', color='blue')
-            ax.set_title(csv)
-            ax.legend()
+                #final_out_zscore.append(output_zscore.item())
+                dec_input[i+window_size-1] = output.item()
+            fig, ax = plt.subplots(2,1,figsize=(20, 15))
+            ax[0].plot([i for i in range(100)], np.array(final_out), label='predict', color='red')
+            ax[0].plot([i for i in range(100)], (test_df['y'][window_size-1:]-mean)/std, label='y', color='blue')
+            ax[1].plot([i for i in range(100)], test_df['y'][window_size-1:], label='y_zscore', color='blue')
+            ax[1].plot([i for i in range(100)], np.array(final_out)*std+mean, label='predict', color='red')
+            ax[0].set_title(csv)
+            ax[0].legend()
+            ax[1].set_title(csv)
+            ax[1].legend()
             plt.savefig(os.path.join(plot_result,csv.strip().replace('.csv','.jpg')),dpi=200)
 
-            predict = torch.tensor(np.array(np.array(final_out)),dtype=torch.float32).unsqueeze(0).to(device)
-            gt_y = torch.tensor(test_df['y'][19:].values,dtype=torch.float32).unsqueeze(0).to(device)
+            predict = torch.tensor(np.array(final_out)*std+mean,dtype=torch.float32).unsqueeze(0)
+            gt_y = torch.tensor(np.array(test_df['y'][window_size-1:]),dtype=torch.float32).unsqueeze(0)
 
             # predict_zscore = torch.tensor(np.array(final_out_zscore),dtype=torch.float32).unsqueeze(0).to(device)
             # gt_y_zscore = torch.tensor(np.array(test_df['y_zscore'][19:].values),dtype=torch.float32).unsqueeze(0).to(device)
@@ -146,17 +151,24 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path ,if_save_plot=
             mse_loss = criterion_1(predict, gt_y)
             rmse_loss = torch.sqrt(mse_loss)
             correlation_matrix = torch.corrcoef(torch.cat((predict, gt_y), dim=0))
+
+            gt_y_all.append(list(gt_y.numpy()))
+            predict_all.append(list(predict.numpy()))
+
             test_result['corre_result'].append(correlation_matrix[1,0].item())
             test_result['mse_result'].append(mse_loss.item())
             test_result['rmse_result'].append(rmse_loss.item())
+    r2 = r2_score(np.squeeze(np.array(gt_y_all)), np.squeeze(np.array(predict_all)))
     logger.info('val mse loss : {:.4f}'.format(sum(test_result['mse_result'])/len(test_result['mse_result'])))
     logger.info('val rmse loss : {:.4f}'.format(sum(test_result['rmse_result']) / len(test_result['rmse_result'])))
     logger.info('correlation : {:.4f}'.format(sum(test_result['corre_result']) / len(test_result['corre_result'])))
+    logger.info('r2 : {:.4f}'.format(r2))
     # logger.info('val mse zscore loss : {:.4f}'.format(sum(test_result['mse_result_zscore']) / len(test_result['mse_result_zscore'])))
     # logger.info('val rmse zscore loss : {:.4f}'.format(sum(test_result['rmse_result_zscore']) / len(test_result['rmse_result_zscore'])))
     # logger.info('correlation zscore: {:.4f}'.format(sum(test_result['corre_result_zscore']) / len(test_result['corre_result_zscore'])))
 
-    return sum(test_result['mse_result']) / len(test_result['mse_result'])
+    return sum(test_result['mse_result']) / len(test_result['mse_result']),sum(test_result['rmse_result']) / len(test_result['rmse_result']),\
+            sum(test_result['corre_result']) / len(test_result['corre_result']),r2
 
 def scale_to_range(column):
     min_val = np.min(column)
