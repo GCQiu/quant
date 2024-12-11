@@ -12,7 +12,7 @@ import logging
 from scipy.stats import zscore
 from losses import weighted_mse_loss
 import matplotlib.pyplot as plt
-from utils import val,val_NAT,test_NAT
+from utils import val_NAT,test_NAT
 from tensorboardX import SummaryWriter
 
 def logging_system(log_file):
@@ -349,8 +349,8 @@ if __name__ == '__main__':
     # model = TransformerModel(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
     #                          dim_feedforward, dropout).to(device)
 
-    # model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
-    #                                                  dim_feedforward, dropout).to(device)
+    model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
+                                                     dim_feedforward, dropout).to(device)
 
     #train_NAT(model,'./model_1211_{}factor/'.format(input_dim),stock_feature_v0,window_size,batch_size,num_epochs)
     #test(model,model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth')
