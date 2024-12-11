@@ -39,7 +39,12 @@ class SlidingWindowDataset(Dataset):
 
             for stock in tqdm.tqdm(self.data,desc="loading data"):
                 for feature in self.stocks_feature.keys():
-                    for i in range(25,len(stock) - window_size + 1,3):
+                    for i in range(30,len(stock) - window_size + 1,3):
+                        factor = stock[feature][i:i + window_size]
+                        self.stocks_feature[feature].append(factor)
+            for stock in tqdm.tqdm(self.data,desc="loading data"):
+                for feature in self.stocks_feature.keys():
+                    for i in range(30,len(stock) - window_size + 1,25):
                         factor = stock[feature][i:i + window_size]
                         self.stocks_feature[feature].append(factor)
 
@@ -91,19 +96,15 @@ class SlidingWindowDataset(Dataset):
         input = []
         for key in self.stocks_feature.keys():
             if key not in ['y']:
-                if key in ['open', 'close', 'high', 'low', 'next_open', 'volume', \
-                           'vwap', 'a_share_capital', 'float_a_share_capital', 'turnover_rate', 'turnover']:
-                    temp = zscore(self.stocks_feature[key][idx].values/self.stocks_feature[key][idx].values[0])
-                    temp = np.where(np.isnan(temp), np.nanmean(temp), temp)
+                if key in ['type','volume_signal']:
+                    temp = self.stocks_feature[key][idx].values
+                    temp = np.where(np.isnan(temp), 0, temp)
                     input.append(temp)
                 else:
                     temp = zscore(self.stocks_feature[key][idx].values)
                     temp = np.where(np.isnan(temp), 0, temp)
                     input.append(temp)
-        ema5_ema10 = zscore(self.stocks_feature['EMA_5'][idx].values-self.stocks_feature['EMA_10'][idx].values)
-        ema10_ema5 = zscore(self.stocks_feature['EMA_10'][idx].values - self.stocks_feature['EMA_5'][idx].values)
-        input.append(ema5_ema10)
-        input.append(ema10_ema5)
+
         # input = self.data[idx,]
         # label = self.y[idx,:]
         # #process volume 越靠近1成交量越大
@@ -131,19 +132,14 @@ class SlidingWindowDataset(Dataset):
         input = []
         for key in self.stocks_feature.keys():
             if key not in ['y']:
-                if key in ['open', 'close', 'high', 'low', 'next_open', 'volume', \
-                           'vwap', 'a_share_capital', 'float_a_share_capital', 'turnover_rate', 'turnover']:
-                    temp = zscore(data[key].values / data[key].values[0])
+                if key in ['type', 'volume_signal']:
+                    temp = data[key].values
                     temp = np.where(np.isnan(temp), 0, temp)
                     input.append(temp)
                 else:
                     temp = zscore(data[key].values)
                     temp = np.where(np.isnan(temp), 0, temp)
                     input.append(temp)
-        ema5_ema10 = zscore(data['EMA_5'].values - data['EMA_10'].values)
-        ema10_ema5 = zscore(data['EMA_10'].values - data['EMA_5'].values)
-        input.append(ema5_ema10)
-        input.append(ema10_ema5)
         # # process volume 越靠近1成交量越大
         # volume_rank = data['volume'].rank(method='min')
         # volume_rank_min_max = zscore(volume_rank.values)

@@ -84,15 +84,15 @@ def y_vis(root_path):
         df = pd.read_csv(os.path.join(root_path,csv), skiprows=0)
         #a_share_capital.append(df['a_share_capital'].mean())
         #df['y_scaled'] = df['y'].apply(lambda x: map_to_range(x, df['y'].min(), df['y'].max()))
-        df['Return'] = df['close'].shift(-1) / df['close'] - 1
-        print(df['mfi'].corr(df['y']))
-        # nan = df.isnull().any().any()
-        #
-        # if nan:
-        #     nan_locations = df.isna()
-        #     print(csv)
-        #     # 打印包含 NaN 值的行和列
-        #     print(df[nan_locations.any(axis=1)])
+        # df['Return'] = df['close'].shift(-1) / df['close'] - 1
+        # print(df['mfi'].corr(df['y']))
+        nan = df.isnull().any().any()
+
+        if nan:
+            nan_locations = df.isna()
+            print(csv)
+            # 打印包含 NaN 值的行和列
+            print(df[nan_locations.any(axis=1)])
 
 
         #print(np.corrcoef(df1,df2))
@@ -213,68 +213,77 @@ def calculate_base_indicators(root_path, target_path):
         data = pd.read_csv(os.path.join(root_path,csv), skiprows=0,index_col=0)
         data = data.copy()
 
-        # data['pseudo_y'] = data['next_open'] / data['open'] - 1
-        #
-        # data['vwap2close'] = data['vwap']/data['close']
-        #
-        # data['natrPrice_5'] = talib.NATR(data['high'], data['low'], data['close'], timeperiod=5)
-        # data['natrPrice_5'].fillna(method="bfill", inplace=True)
-        #
-        # data['mfi'] = talib.MFI(data['high'], data['low'], data['close'], data['volume'], timeperiod=14)
-        # data['mfi'].fillna(method="bfill", inplace=True)
-        #
-        #
-        #
-        # data['trangePrice'] = talib.TRANGE(data['high'], data['low'], data['close'])
-        # data['trangePrice'].fillna(method="bfill", inplace=True)
-        #
-        # data['ADOSC']=talib.ADOSC(data['high'],data['low'],data['close'],data['volume'],fastperiod=3,slowperiod=10)
-        # data['ADOSC'].fillna(method="bfill", inplace=True)
-        #
-        # data['obv'] = talib.OBV(data['close'],data['volume'])
-        # data['obv'].fillna(method="bfill", inplace=True)
-        #
-        # data['boll_upper'], data['boll_middle'], data['boll_lower'] = talib.BBANDS(
-        #     data['close'],
-        #     timeperiod=20,
-        #     # number of non-biased standard deviations from the mean
-        #     nbdevup=2,
-        #     nbdevdn=2,
-        #     # Moving average type: simple moving average here
-        #     matype=0)
-        # data['boll_upper'].fillna(method="bfill", inplace=True)
-        # data['boll_middle'].fillna(method="bfill", inplace=True)
-        # data['boll_lower'].fillna(method="bfill", inplace=True)
-        #
-        # mama, fama = talib.MAMA(data['close'], fastlimit=0.5, slowlimit=0.05)
-        # data['mama'] = mama
-        # data['fama'] = fama
-        # data['mama'].fillna(method="bfill", inplace=True)
-        # data['fama'].fillna(method="bfill", inplace=True)
-        #
-        # data['sar'] = talib.SAR(data['high'], data['low'], acceleration=0.02, maximum=0.2)
-        # data['sar'].fillna(method="bfill", inplace=True)
-        # #macd
-        # data['dif'], data['dem'], data['histogram'] = talib.MACD(data['close'], fastperiod=12, slowperiod=26, signalperiod=9)
-        # data['dif'].fillna(method="bfill", inplace=True)
-        # data['dem'].fillna(method="bfill", inplace=True)
-        # data['histogram'].fillna(method="bfill", inplace=True)
-        #
-        # data['mom12'] = talib.MOM(data['close'], timeperiod=12)
-        # data['mom26'] = talib.MOM(data['close'], timeperiod=26)
-        # data['mom12'].fillna(method="bfill", inplace=True)
-        # data['mom26'].fillna(method="bfill", inplace=True)
-        # data['TRANGE'] = talib.TRANGE(data['high'], data['low'], data['close'])
-        # data['TRANGE'].fillna(method="bfill", inplace=True)
+        # 计算均线
+        data['EMA_5'] = talib.EMA(data['close'].values, timeperiod=10)
+        data['EMA_10'] = talib.EMA(data['close'].values, timeperiod=15)
+        data['EMA_20'] = talib.EMA(data['close'].values, timeperiod=20)
 
-        # data['volume_change'] = data['volume']/data['volume'].shift(1)-1
-        # data['volume_change'].fillna(method="bfill", inplace=True)
-        #
-        # data['turnover_rate_change'] = data['turnover_rate'] / data['turnover_rate'].shift(1) - 1
-        # data['turnover_rate_change'].fillna(method="bfill", inplace=True)
-        #
-        # data['turnover_change'] = data['turnover'] / data['turnover'].shift(1) - 1
-        # data['turnover_change'].fillna(method="bfill", inplace=True)
+        data['EMA_5'].fillna(method="bfill", inplace=True)
+        data['EMA_10'].fillna(method="bfill", inplace=True)
+        data['EMA_20'].fillna(method="bfill", inplace=True)
+
+        data['pseudo_y'] = data['next_open'] / data['open'] - 1
+
+        data['vwap2close'] = data['vwap']/data['close']
+
+        data['natrPrice_5'] = talib.NATR(data['high'], data['low'], data['close'], timeperiod=5)
+        data['natrPrice_5'].fillna(method="bfill", inplace=True)
+
+        data['mfi'] = talib.MFI(data['high'], data['low'], data['close'], data['volume'], timeperiod=14)
+        data['mfi'].fillna(method="bfill", inplace=True)
+
+
+
+        data['trangePrice'] = talib.TRANGE(data['high'], data['low'], data['close'])
+        data['trangePrice'].fillna(method="bfill", inplace=True)
+
+        data['ADOSC']=talib.ADOSC(data['high'],data['low'],data['close'],data['volume'],fastperiod=3,slowperiod=10)
+        data['ADOSC'].fillna(method="bfill", inplace=True)
+
+        data['obv'] = talib.OBV(data['close'],data['volume'])
+        data['obv'].fillna(method="bfill", inplace=True)
+
+        data['boll_upper'], data['boll_middle'], data['boll_lower'] = talib.BBANDS(
+            data['close'],
+            timeperiod=20,
+            # number of non-biased standard deviations from the mean
+            nbdevup=2,
+            nbdevdn=2,
+            # Moving average type: simple moving average here
+            matype=0)
+        data['boll_upper'].fillna(method="bfill", inplace=True)
+        data['boll_middle'].fillna(method="bfill", inplace=True)
+        data['boll_lower'].fillna(method="bfill", inplace=True)
+
+        mama, fama = talib.MAMA(data['close'], fastlimit=0.5, slowlimit=0.05)
+        data['mama'] = mama
+        data['fama'] = fama
+        data['mama'].fillna(method="bfill", inplace=True)
+        data['fama'].fillna(method="bfill", inplace=True)
+
+        data['sar'] = talib.SAR(data['high'], data['low'], acceleration=0.02, maximum=0.2)
+        data['sar'].fillna(method="bfill", inplace=True)
+        #macd
+        data['dif'], data['dem'], data['histogram'] = talib.MACD(data['close'], fastperiod=12, slowperiod=26, signalperiod=9)
+        data['dif'].fillna(method="bfill", inplace=True)
+        data['dem'].fillna(method="bfill", inplace=True)
+        data['histogram'].fillna(method="bfill", inplace=True)
+
+        data['mom12'] = talib.MOM(data['close'], timeperiod=12)
+        data['mom26'] = talib.MOM(data['close'], timeperiod=26)
+        data['mom12'].fillna(method="bfill", inplace=True)
+        data['mom26'].fillna(method="bfill", inplace=True)
+        data['TRANGE'] = talib.TRANGE(data['high'], data['low'], data['close'])
+        data['TRANGE'].fillna(method="bfill", inplace=True)
+
+        data['volume_change'] = data['volume']/data['volume'].shift(1)-1
+        data['volume_change'].fillna(method="bfill", inplace=True)
+
+        data['turnover_rate_change'] = data['turnover_rate'] / data['turnover_rate'].shift(1) - 1
+        data['turnover_rate_change'].fillna(method="bfill", inplace=True)
+
+        data['turnover_change'] = data['turnover'] / data['turnover'].shift(1) - 1
+        data['turnover_change'].fillna(method="bfill", inplace=True)
 
         data['ema10_ema5'] = data['EMA_10'] - data['EMA_5']
         data['ema20_ema5'] = data['EMA_20'] - data['EMA_5']
@@ -285,83 +294,115 @@ def calculate_base_indicators(root_path, target_path):
         data['ema20_ema10'] = data['EMA_20'] - data['EMA_10']
         data['ema10_ema20'] = data['EMA_10'] - data['EMA_20']
 
+        data['volume_rank'] = data['volume'].rolling(30 + 1).apply(lambda x: pd.Series(x).rank().iloc[-1])
+        data['volume_rank'] = 2 * (data['volume_rank'] - 30 - 1) / 30 + 1
+        data['volume_rank'].fillna(0)
+
+        data['turnover_rank'] = data['turnover'].rolling(30 + 1).apply(lambda x: pd.Series(x).rank().iloc[-1])
+        data['turnover_rank'] = 2 * (data['turnover_rank'] - 30 - 1) / 30 + 1
+        data['turnover_rank'].fillna(0)
+
+        data['turnover_rate_rank'] = data['turnover_rate'].rolling(30 + 1).apply(lambda x: pd.Series(x).rank().iloc[-1])
+        data['turnover_rate_rank'] = 2 * (data['turnover_rate_rank'] - 30 - 1) / 30 + 1
+        data['turnover_rate_rank'].fillna(0)
+
+        data['boll_upper_breakout'] = data['boll_upper'] - np.maximum(data['close'], data['open'])
+        data['boll_lower_breakout'] = data['boll_lower'] - np.maximum(data['close'], data['open'])
+
+        data['slowk'], data['slowd'] = talib.STOCH(
+            data['high'].values,
+            data['low'].values,
+            data['close'].values,
+            fastk_period=9,
+            slowk_period=3,
+            slowk_matype=0,
+            slowd_period=3,
+            slowd_matype=0)
+        data['slowj'] = list(map(lambda x, y: 3 * x - 2 * y, data['slowk'], data['slowd']))
+
+        rank = data['close'].rolling(window=30).rank(
+            ascending=False, pct=True)
+        con1 = rank <= 0.1
+        con2 = rank >= 0.9
+        data['turnover_rate_mid'] = data['turnover_rate'].rolling(30).mean()
+        data['turnover_rate_std'] = data['turnover_rate'].rolling(30).std()
+        data['turnover_rate_up'] = data['turnover_rate_mid'] + data['turnover_rate_std'] * 2
+        con3 = data['turnover_rate'] > data['turnover_rate_up']
+        data.loc[con1 & con3, 'volume_signal'] = -1
+        data.loc[con2 & con3, 'volume_signal'] = 1
+        data.fillna(0, inplace=True)
+
+
+
+
+
+
+
+
+
+        data['open_change'] = data['open']/data['open'].shift(1)-1
+        data.loc[0, 'open_change'] = 0
+
+        data['close_change'] = data['close'] / data['close'].shift(1) - 1
+        data.loc[0, 'close_change'] = 0
+
+        data['low_change'] = data['low'] / data['low'].shift(1) - 1
+        data.loc[0, 'low_change'] = 0
+
+        data['high_change'] = data['high'] / data['high'].shift(1) - 1
+        data.loc[0, 'high_change'] = 0
+
+        data['low2high'] = data['low'] / data['high']
+        data['klen'] = (data['high'] - data['low'])/data['open']
+
+        data['temp'] = data.apply(lambda row: row['open'] if row['open'] > row['close'] else row['close'], axis=1)
+        data['kup'] = (data['high'] - data['temp'])/data['open']
+        data.drop(['temp'],inplace=True,axis=1)
+
+        data['temp'] = data.apply(lambda row: row['open'] if row['open'] < row['close'] else row['close'], axis=1)
+        data['klow'] = (data['temp'] - data['low'])/data['open']
+
+        data['klow2'] = (data['temp'] - data['low'])/(data['high'] - data['low'])
+        data['klow2'] = data['klow2'].fillna(0)
+        data.drop(['temp'], inplace=True,axis=1)
+
+        data['ksft'] = (2 * data['close'] - data['high'] - data['low'])/data['open']
+
+        data['ksft2'] = (2 * data['close'] - data['high'] - data['low'])/(data['high'] - data['low'])
+        data['ksft2'] = data['ksft2'].fillna(0)
+
         data.to_csv("./{}/{}".format(target_path, csv))
 
+        # 计算每日涨跌幅
+        data['Return'] = data['close']/data['close'].shift(1)-1
+        data.loc[0, 'Return'] = 0
+
+        # 计算市值波动
+        data['a_share_capital_percentage'] = data['a_share_capital'] / data['a_share_capital'].shift(1) - 1
+        data.loc[0, 'a_share_capital_percentage'] = 0
+
+        # 计算流通市值波动
+        data['float_a_share_capital_percentage'] = data['float_a_share_capital'] / data['float_a_share_capital'].shift(1) - 1
+        data.loc[0, 'float_a_share_capital_percentage'] = 0
+
+        data['vwap_percentage'] = data['vwap'] / data['vwap'].shift(
+            1) - 1
+        data.loc[0, 'vwap_percentage'] = 0
+
+        data['next_open_percentage'] = data['next_open'] / data['next_open'].shift(
+            1) - 1
+        data.loc[0, 'next_open_percentage'] = 0
 
 
 
+        #计算rsi
+        data['rsi5'] = talib.RSI(data['close'], timeperiod=5)
+        data['rsi10'] = talib.RSI(data['close'], timeperiod=10)
+        data['rsi14'] = talib.RSI(data['close'], timeperiod=14)
 
-
-        # data['open_change'] = data['open']/data['open'].shift(1)-1
-        # data.loc[0, 'open_change'] = 0
-        #
-        # data['close_change'] = data['close'] / data['close'].shift(1) - 1
-        # data.loc[0, 'close_change'] = 0
-        #
-        # data['low_change'] = data['low'] / data['low'].shift(1) - 1
-        # data.loc[0, 'low_change'] = 0
-        #
-        # data['high_change'] = data['high'] / data['high'].shift(1) - 1
-        # data.loc[0, 'high_change'] = 0
-        #
-        # data['low2high'] = data['low'] / data['high']
-        # data['klen'] = (data['high'] - data['low'])/data['open']
-        #
-        # data['temp'] = data.apply(lambda row: row['open'] if row['open'] > row['close'] else row['close'], axis=1)
-        # data['kup'] = (data['high'] - data['temp'])/data['open']
-        # data.drop(['temp'],inplace=True,axis=1)
-        #
-        # data['temp'] = data.apply(lambda row: row['open'] if row['open'] < row['close'] else row['close'], axis=1)
-        # data['klow'] = (data['temp'] - data['low'])/data['open']
-        #
-        # data['klow2'] = (data['temp'] - data['low'])/(data['high'] - data['low'])
-        # data['klow2'] = data['klow2'].fillna(0)
-        # data.drop(['temp'], inplace=True,axis=1)
-        #
-        # data['ksft'] = (2 * data['close'] - data['high'] - data['low'])/data['open']
-        #
-        # data['ksft2'] = (2 * data['close'] - data['high'] - data['low'])/(data['high'] - data['low'])
-        # data['ksft2'] = data['ksft2'].fillna(0)
-        #
-        # data.to_csv("./{}/{}".format(target_path, csv))
-
-        # # 计算每日涨跌幅
-        # data['Return'] = data['close']/data['close'].shift(1)-1
-        # data.loc[0, 'Return'] = 0
-        #
-        # # 计算市值波动
-        # data['a_share_capital_percentage'] = data['a_share_capital'] / data['a_share_capital'].shift(1) - 1
-        # data.loc[0, 'a_share_capital_percentage'] = 0
-        #
-        # # 计算流通市值波动
-        # data['float_a_share_capital_percentage'] = data['float_a_share_capital'] / data['float_a_share_capital'].shift(1) - 1
-        # data.loc[0, 'float_a_share_capital_percentage'] = 0
-        #
-        # data['vwap_percentage'] = data['vwap'] / data['vwap'].shift(
-        #     1) - 1
-        # data.loc[0, 'vwap_percentage'] = 0
-        #
-        # data['next_open_percentage'] = data['next_open'] / data['next_open'].shift(
-        #     1) - 1
-        # data.loc[0, 'next_open_percentage'] = 0
-        #
-        # # 计算均线
-        # data['EMA_5'] = talib.EMA(data['close'].values, timeperiod=10)
-        # data['EMA_10'] = talib.EMA(data['close'].values, timeperiod=15)
-        # data['EMA_20'] = talib.EMA(data['close'].values, timeperiod=20)
-        #
-        # data['EMA_5'].fillna(method="bfill", inplace=True)
-        # data['EMA_10'].fillna(method="bfill", inplace=True)
-        # data['EMA_20'].fillna(method="bfill", inplace=True)
-        #
-        # #计算rsi
-        # data['rsi5'] = talib.RSI(data['close'], timeperiod=5)
-        # data['rsi10'] = talib.RSI(data['close'], timeperiod=10)
-        # data['rsi14'] = talib.RSI(data['close'], timeperiod=14)
-        #
-        # data['rsi5'].fillna(method="bfill", inplace=True)
-        # data['rsi10'].fillna(method="bfill", inplace=True)
-        # data['rsi14'].fillna(method="bfill", inplace=True)
+        data['rsi5'].fillna(method="bfill", inplace=True)
+        data['rsi10'].fillna(method="bfill", inplace=True)
+        data['rsi14'].fillna(method="bfill", inplace=True)
 
         #column1_30 = data['EMA_5'].iloc[29:70]
 
@@ -374,20 +415,20 @@ def calculate_base_indicators(root_path, target_path):
         #data['EMA_5_30'] = pd.Series(column1_30_normalized.flatten())
 
         #计算均线涨跌幅
-        # data['EMA_5_trend'] = data['EMA_5']/data['EMA_5'].shift(1)-1
-        # data['EMA_5_trend'].fillna(0, inplace=True)
-        #
-        #
-        # data['EMA_10_trend'] = data['EMA_10']/data['EMA_10'].shift(1)-1
-        # data['EMA_10_trend'].fillna(0, inplace=True)
-        #
-        # data['EMA_20_trend'] = data['EMA_20']/data['EMA_20'].shift(1)-1
-        # data['EMA_20_trend'].fillna(0, inplace=True)
+        data['EMA_5_trend'] = data['EMA_5']/data['EMA_5'].shift(1)-1
+        data['EMA_5_trend'].fillna(0, inplace=True)
 
-        # #计算pseudo_y
-        # data['pseudo_y'] = data['open']/data['next_open']-1
 
-        #data.to_csv("./{}/{}".format(target_path, csv))
+        data['EMA_10_trend'] = data['EMA_10']/data['EMA_10'].shift(1)-1
+        data['EMA_10_trend'].fillna(0, inplace=True)
+
+        data['EMA_20_trend'] = data['EMA_20']/data['EMA_20'].shift(1)-1
+        data['EMA_20_trend'].fillna(0, inplace=True)
+
+        #计算pseudo_y
+        data['pseudo_y'] = data['open']/data['next_open']-1
+
+        data.to_csv("./{}/{}".format(target_path, csv))
 
         # plt.figure(dpi=200)
         # plt.plot([i for i in range(len(data['EMA_10']))], data['EMA_10'], label='曲线1', color='blue')
@@ -606,7 +647,7 @@ if __name__ == '__main__':
     #y_vis('./dataset_train_v0')
     #process_y('./dataset_test_v0')
     #y_percentage_corre('./dataset_train_v0')
-    calculate_base_indicators(root_path='./dataset_test_v0',target_path = './dataset_test_v0')
+    calculate_base_indicators(root_path='./dataset_zero_need_predict',target_path = './dataset_zero_need_predict')
     #calculate_return(root_path)
     #dataset_clean()
     #print(len(os.listdir('./dataset_non_zero')),len(os.listdir('./dataset_zero')),len(os.listdir('./dataset')))
