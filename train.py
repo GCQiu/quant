@@ -12,7 +12,7 @@ import logging
 from scipy.stats import zscore
 from losses import weighted_mse_loss
 import matplotlib.pyplot as plt
-from utils import val,val_NAT
+from utils import val,val_NAT,test_NAT
 from tensorboardX import SummaryWriter
 
 def logging_system(log_file):
@@ -349,12 +349,14 @@ if __name__ == '__main__':
     # model = TransformerModel(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
     #                          dim_feedforward, dropout).to(device)
 
-    model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
-                                                     dim_feedforward, dropout).to(device)
+    # model = TransformerModel_reg(input_dim, output_dim, d_model, nhead, num_encoder_layers, num_decoder_layers,
+    #                                                  dim_feedforward, dropout).to(device)
 
-    train_NAT(model,'./model_1211_{}factor/'.format(input_dim),stock_feature_v0,window_size,batch_size,num_epochs)
+    #train_NAT(model,'./model_1211_{}factor/'.format(input_dim),stock_feature_v0,window_size,batch_size,num_epochs)
     #test(model,model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth')
     #mse_loss,rmse_loss,corr,r2 = val(model,model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth',training=False)
-    # mse_loss, rmse_loss, corr, r2 = val_NAT(model, logger, 1, window_size=window_size, stock_feature=stock_feature,
-    #                                         model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth',
-    #                                         training=False, plot_save_path='./model_2layer_16head_36factor/test', device=device)
+    mse_loss, rmse_loss, corr, r2 = test_NAT(model_path='./model_1211_55factor/model_epoch20_0.0004_0.0181_0.0795_-0.1045.pth',
+                                             test_path = './dataset_zero_need_predict'
+                                            ,plot_save_path='./model_1211_55factor_eva'
+                                            ,stock_feature=stock_feature_v0
+                                            ,window_size=window_size)
