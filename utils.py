@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import mplfinance as mpf
 
 
-def test_NAT(model_path,test_path,plot_save_path,stock_feature,window_size,if_save_plot=True,device=None):
+def test_NAT(model,model_path,test_path,plot_save_path,stock_feature,window_size,if_save_plot=True,device=None):
     #model.load_state_dict(torch.load('transformer_model.pth'))
     model.load_state_dict(torch.load(model_path))
     model.to(device)
@@ -38,10 +38,16 @@ def test_NAT(model_path,test_path,plot_save_path,stock_feature,window_size,if_sa
     }
     gt_y_all = []
     predict_all = []
-    test_list = open('test_file.txt','r').readlines()
-    for csv in tqdm.tqdm(test_list):
+    #test_list = open('test_file.txt','r').readlines()
+    for csv in tqdm.tqdm(os.listdir(test_path)):
             df = pd.read_csv(os.path.join(test_path, csv.strip()), index_col=0)
-
+            print(df.shape[0],csv)
+            if df.shape[0] < window_size:
+                continue
+            if df.shape[0] < 120:
+                window_size = df.shape[0]-100+1
+            else:
+                pass
             test_df = df.tail(100+window_size-1).reset_index(drop=True)
             dec_input = df['y'].tail(100+window_size-1).copy().reset_index(drop=True)
             dec_input.loc[window_size-1:] = 0

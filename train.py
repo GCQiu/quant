@@ -355,8 +355,9 @@ if __name__ == '__main__':
     #train_NAT(model,'./model_1211_{}factor/'.format(input_dim),stock_feature_v0,window_size,batch_size,num_epochs)
     #test(model,model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth')
     #mse_loss,rmse_loss,corr,r2 = val(model,model_path='./model_2layer_16head_36factor/model_epoch22_0.0004_0.0188_0.0382_-0.1818.pth',training=False)
-    mse_loss, rmse_loss, corr, r2 = test_NAT(model_path='./model_1211_55factor/model_epoch20_0.0004_0.0181_0.0795_-0.1045.pth',
-                                             test_path = './dataset_zero_need_predict'
-                                            ,plot_save_path='./model_1211_55factor_eva'
-                                            ,stock_feature=stock_feature_v0
-                                            ,window_size=window_size)
+    mse_loss, rmse_loss, corr, r2 = test_NAT(model,
+                     model_path='./model_1211_55factor/model_epoch20_0.0004_0.0181_0.0795_-0.1045.pth',
+                     test_path = './dataset_zero_need_predict'
+                    ,plot_save_path='./model_1211_55factor_eva'
+                    ,stock_feature=stock_feature_v0
+                    ,window_size=window_size,device=device,logger=logger)
