@@ -84,15 +84,15 @@ def y_vis(root_path):
         df = pd.read_csv(os.path.join(root_path,csv), skiprows=0)
         #a_share_capital.append(df['a_share_capital'].mean())
         #df['y_scaled'] = df['y'].apply(lambda x: map_to_range(x, df['y'].min(), df['y'].max()))
-        # df['Return'] = df['open'].shift(-1) / df['open'].shift(-2) - 1
-        # print(df['next_open'][30:40].corr(df['y'][30:40]))
-        nan = df.isnull().any().any()
-
-        if nan:
-            nan_locations = df.isna()
-            print(csv)
-            # 打印包含 NaN 值的行和列
-            print(df[nan_locations.any(axis=1)])
+        df['Return'] = df['close'].shift(-1) / df['close'] - 1
+        print(df['mfi'].corr(df['y']))
+        # nan = df.isnull().any().any()
+        #
+        # if nan:
+        #     nan_locations = df.isna()
+        #     print(csv)
+        #     # 打印包含 NaN 值的行和列
+        #     print(df[nan_locations.any(axis=1)])
 
 
         #print(np.corrcoef(df1,df2))
@@ -115,8 +115,70 @@ def y_percentage_corre(root_path):
     os.makedirs('./heatmap_stocks/', exist_ok=True)
     for csv in tqdm.tqdm(os.listdir(root_path)):
         df = pd.read_csv(os.path.join(root_path,csv), skiprows=0)
-        plt.figure(dpi=500,figsize=(20,10))
-        new_df = pd.DataFrame(df, columns=['EMA_15', 'y','EMA_20','EMA_10'])
+        plt.figure(figsize=(25, 20))
+        stock_feature = {
+            # # 基本量价因子
+            'open':[],
+            'close':[],
+            'high':[],
+            'low':[],
+            'next_open':[],
+            'volume': [],
+            'vwap':[],
+            'a_share_capital': [],
+            'float_a_share_capital': [],
+            'turnover_rate': [],
+            'turnover': [],
+            # 波动率因子
+            'Return': [],
+            'EMA_5_trend': [],
+            'EMA_10_trend': [],
+            'EMA_20_trend': [],
+            'pseudo_y': [],
+            'low2high': [],
+            'klen': [],
+            'kup': [],
+            'klow': [],
+            'ksft': [],
+            'klow2':[],
+            'ksft2': [],
+            'next_open_percentage': [],
+            'close_change': [],
+            'open_change': [],
+            'low_change': [],
+            'high_change': [],
+            'a_share_capital_percentage': [],
+            'float_a_share_capital_percentage': [],
+            'vwap_percentage': [],
+            'vwap2close':[],
+            'volume_change':[],
+            'turnover_rate_change':[],
+            'turnover_change':[],
+            #重叠因子
+            'EMA_5': [],
+            'EMA_10': [],
+            'EMA_20': [],
+            'boll_upper':[],
+            'boll_middle':[],
+            'boll_lower':[],
+            'mama':[],
+            'fama':[],
+            'sar':[],
+            'dif':[],
+            'dem':[],
+            'histogram':[],
+            'mom12':[],
+            'mom26':[],
+            #成交量因子
+            'ADOSC':[],
+            'obv':[],
+            #波动性因子
+            'natrPrice_5':[],
+            'TRANGE':[],
+        'rsi5':[],    'rsi10':[],    'rsi14':[],
+            'y':[],
+        }
+        new_df = pd.DataFrame(df, columns=list(stock_feature.keys()))
                                            # 'volume','vwap','a_share_capital','total_capital','total_capital'\
                                            # ,'float_a_share_capital','turnover','turnover_rate'])
 
@@ -124,11 +186,23 @@ def y_percentage_corre(root_path):
         # 计算DataFrame中所有列之间的相关系数矩阵
         correlation_matrix = new_df.corr()
 
-        # 使用seaborn的heatmap函数绘制热力图
-        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+        # # 使用seaborn的heatmap函数绘制热力图
+        # sns.heatmap(correlation_matrix, annot=True, cmap='OrRd',linecolor='black',cbar=True,square=True,)
 
-        # 显示热力图
-        #plt.show()
+        # 设置 Seaborn 的样式
+        sns.set(style="white")
+
+        # 创建一个掩码，用于隐藏对角线上的值
+        mask = np.triu(np.ones_like(correlation_matrix, dtype=bool))
+
+        # 设置图形大小
+        plt.figure(figsize=(20, 15))
+
+        # 绘制热力图
+        cmap = sns.diverging_palette(230, 20, as_cmap=True)
+        sns.heatmap(correlation_matrix, mask=mask, cmap=cmap, vmax=.3, center=0,
+                    square=True, linewidths=.5, cbar_kws={"shrink": .5}, annot=True, fmt=".2f", annot_kws={"size": 7})
+
         plt.savefig('./heatmap_stocks/{}'.format(csv.replace('.csv', '.jpg')), dpi=300)
 
 
@@ -190,8 +264,26 @@ def calculate_base_indicators(root_path, target_path):
         # data['mom26'] = talib.MOM(data['close'], timeperiod=26)
         # data['mom12'].fillna(method="bfill", inplace=True)
         # data['mom26'].fillna(method="bfill", inplace=True)
-        data['TRANGE'] = talib.TRANGE(data['high'], data['low'], data['close'])
-        data['TRANGE'].fillna(method="bfill", inplace=True)
+        # data['TRANGE'] = talib.TRANGE(data['high'], data['low'], data['close'])
+        # data['TRANGE'].fillna(method="bfill", inplace=True)
+
+        # data['volume_change'] = data['volume']/data['volume'].shift(1)-1
+        # data['volume_change'].fillna(method="bfill", inplace=True)
+        #
+        # data['turnover_rate_change'] = data['turnover_rate'] / data['turnover_rate'].shift(1) - 1
+        # data['turnover_rate_change'].fillna(method="bfill", inplace=True)
+        #
+        # data['turnover_change'] = data['turnover'] / data['turnover'].shift(1) - 1
+        # data['turnover_change'].fillna(method="bfill", inplace=True)
+
+        data['ema10_ema5'] = data['EMA_10'] - data['EMA_5']
+        data['ema20_ema5'] = data['EMA_20'] - data['EMA_5']
+
+        data['ema5_ema10'] = data['EMA_5'] - data['EMA_10']
+        data['ema5_ema20'] = data['EMA_5'] - data['EMA_20']
+
+        data['ema20_ema10'] = data['EMA_20'] - data['EMA_10']
+        data['ema10_ema20'] = data['EMA_10'] - data['EMA_20']
 
         data.to_csv("./{}/{}".format(target_path, csv))
 
@@ -511,9 +603,9 @@ if __name__ == '__main__':
     # print(len(os.listdir('./dataset_abandon')),len(os.listdir('./dataset_non_zero')))
     #date_num('./dataset')
     #percentage_up_down(root_path)
-    #y_vis('./dataset_test_v0')
+    #y_vis('./dataset_train_v0')
     #process_y('./dataset_test_v0')
-    #y_percentage_corre(root_path)
+    #y_percentage_corre('./dataset_train_v0')
     calculate_base_indicators(root_path='./dataset_test_v0',target_path = './dataset_test_v0')
     #calculate_return(root_path)
     #dataset_clean()

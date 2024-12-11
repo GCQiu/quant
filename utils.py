@@ -13,6 +13,7 @@ from scipy.stats import zscore
 from sklearn.metrics import r2_score
 from losses import weighted_mse_loss
 import matplotlib.pyplot as plt
+import mplfinance as mpf
 
 
 def val(model,logger,model_path,training,plot_save_path ,if_save_plot=True,device=None):
@@ -101,7 +102,7 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path,stock_feature,
     gt_y_all = []
     predict_all = []
     test_list = open('test_file.txt','r').readlines()
-    for csv in tqdm.tqdm(test_list[0:3]):
+    for csv in tqdm.tqdm(test_list):
             df = pd.read_csv(os.path.join(test_path, csv.strip()), index_col=0)
 
             test_df = df.tail(100+window_size-1).reset_index(drop=True)
@@ -118,17 +119,27 @@ def val_NAT(model,logger,epoch,model_path,training,plot_save_path,stock_feature,
             for i in range(0,len(test_df) - window_size + 1,1):
                 stocks_feature, y = test_dataset.test_preprocess_v1(test_df[i:i+window_size])
                 src = torch.tensor(np.array(stocks_feature),dtype=torch.float32).unsqueeze(0).to(device) #N d L
+
                 tgt = torch.tensor(dec_input[i:i+window_size].values, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)  # N d L
 
-                output = model.forward(src, tgt)
+                output = model.forward(src, src)
                 final_out.append(output.item())
                 #final_out_zscore.append(output_zscore.item())
                 dec_input[i+window_size-1] = output.item()
-            fig, ax = plt.subplots(2,1,figsize=(20, 15))
+            fig, ax = plt.subplots(3,1,figsize=(20, 15))
             ax[0].plot([i for i in range(100)], np.array(final_out), label='predict', color='red')
-            ax[0].plot([i for i in range(100)], (test_df['y'][window_size-1:]-mean)/std, label='y', color='blue')
-            ax[1].plot([i for i in range(100)], test_df['y'][window_size-1:], label='y_zscore', color='blue')
-            ax[1].plot([i for i in range(100)], np.array(final_out)*std+mean, label='predict', color='red')
+            ax[0].plot([i for i in range(100)], test_df['y'][window_size-1:], label='y', color='blue')
+            ax[1].plot([i for i in range(100)], test_df['y'][window_size-1:]*100, label='y_zscore', color='blue')
+            ax[1].plot([i for i in range(100)], np.array(final_out), label='predict', color='green')
+            ax[1].plot([i for i in range(100)], [0 for i in range(100)], label='predict', color='black')
+            #ax[1].plot([i for i in range(100)], np.array(final_out) * std + mean, label='predict', color='red')
+            df.rename(columns={'date': 'Date'}, inplace=True)
+            # df.set_index('Date', inplace=True)
+            df.index = pd.DatetimeIndex(df['Date'])
+            #df.index = pd.to_datetime(df.index)
+
+            #print(len(test_df['y'][window_size-1:]))
+            mpf.plot(df.tail(100), type='candle', style='charles',ylabel='Price', ax=ax[2])
             ax[0].set_title(csv)
             ax[0].legend()
             ax[1].set_title(csv)

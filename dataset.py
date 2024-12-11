@@ -6,9 +6,10 @@ import torch
 import tqdm
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy.stats import zscore
+import json
 
 class SlidingWindowDataset(Dataset):
-    def __init__(self, folder_path, window_size, batch_size,stocks_feature,is_training=True):
+    def __init__(self, folder_path, window_size, batch_size,stocks_feature,is_training=True,save_npy = True):
         self.folder_path = folder_path
         self.window_size = window_size
         self.batch_size = batch_size
@@ -36,14 +37,46 @@ class SlidingWindowDataset(Dataset):
                     # self.indices.extend(range(len(df) - window_size))
             print('stocks num:{}'.format(len(self.data)))
 
-            for stock in tqdm.tqdm(self.data[0:2],desc="loading data"):
+            for stock in tqdm.tqdm(self.data,desc="loading data"):
                 for feature in self.stocks_feature.keys():
-                    for i in range(10,len(stock) - window_size + 1,1):
-                        open = stock[feature][i:i + window_size]
-                        self.stocks_feature[feature].append(open)
-            print(f"num_samples {len(self.stocks_feature['open'])} num_y {len(self.y)}")
+                    for i in range(25,len(stock) - window_size + 1,3):
+                        factor = stock[feature][i:i + window_size]
+                        self.stocks_feature[feature].append(factor)
 
-            self.num_samples = len(self.stocks_feature['open'])
+            print(f"num_samples {len(self.stocks_feature['y'])} num_y {len(self.y)}")
+
+            # with open('dataset_train_v0.json', 'w') as json_file:
+            #     json.dump(self.stocks_feature, json_file, indent=4)
+            # print('finish loading data')
+            #
+            # with open('dataset_train_v0.json', 'r') as json_file:
+            #     self.stocks_feature = json.load(json_file)
+            #
+            # dataset_train_v0,dataset_train_v0_y = [],[]
+            # if save_npy:
+            #     for i in range(len(self.stocks_feature['open'])):
+            #         input, label= [],[]
+            #         for key in self.stocks_feature.keys():
+            #             if key not in ['y']:
+            #                 temp = zscore(self.stocks_feature[key][i].values)
+            #                 temp = np.where(np.isnan(temp), 0, temp)
+            #                 input.append(temp)
+            #             else:
+            #                 y = zscore(self.stocks_feature['y'][i].values)
+            #                 label.append(y)
+            #         dataset_train_v0.append(input)
+            #         dataset_train_v0_y.append(label)
+            #
+            # dataset_train_v0_y = np.array(dataset_train_v0_y)
+            # dataset_train_v0 = np.array(dataset_train_v0)
+            # print(dataset_train_v0.shape, dataset_train_v0_y.shape)
+            # np.save('dataset_train_v0_y.npy', dataset_train_v0_y)
+            # np.save('dataset_train_v0.npy', dataset_train_v0)
+        # self.data = np.load('dataset_train_v0.npy')
+        # self.y = np.load('dataset_train_v0_y.npy')
+        # print(self.data.shape)
+
+        self.num_samples = len(self.stocks_feature['y'])
 
     def __len__(self):
         return self.num_samples
@@ -58,48 +91,71 @@ class SlidingWindowDataset(Dataset):
         input = []
         for key in self.stocks_feature.keys():
             if key not in ['y']:
-                temp = zscore(self.stocks_feature[key][idx].values)
-                #temp = np.where(np.isnan(temp), 0, temp)
-                input.append(temp)
-        #process volume 越靠近1成交量越大
-        volume_rank = self.stocks_feature['volume'][idx].rank(method='min')
-        volume_rank_min_max = zscore(volume_rank.values)
-        input.append(volume_rank_min_max)
-        # process turnover_rate
-        turnover_rate_rank = self.stocks_feature['turnover_rate'][idx].rank(method='min')
-        turnover_rate_min_max = zscore(turnover_rate_rank.values)
-        input.append(turnover_rate_min_max)
-        # process turnover
-        turnover_rank = self.stocks_feature['turnover'][idx].rank(method='min')
-        turnover_rank_min_max = zscore(turnover_rank.values)
-        input.append(turnover_rank_min_max)
+                if key in ['open', 'close', 'high', 'low', 'next_open', 'volume', \
+                           'vwap', 'a_share_capital', 'float_a_share_capital', 'turnover_rate', 'turnover']:
+                    temp = zscore(self.stocks_feature[key][idx].values/self.stocks_feature[key][idx].values[0])
+                    temp = np.where(np.isnan(temp), np.nanmean(temp), temp)
+                    input.append(temp)
+                else:
+                    temp = zscore(self.stocks_feature[key][idx].values)
+                    temp = np.where(np.isnan(temp), 0, temp)
+                    input.append(temp)
+        ema5_ema10 = zscore(self.stocks_feature['EMA_5'][idx].values-self.stocks_feature['EMA_10'][idx].values)
+        ema10_ema5 = zscore(self.stocks_feature['EMA_10'][idx].values - self.stocks_feature['EMA_5'][idx].values)
+        input.append(ema5_ema10)
+        input.append(ema10_ema5)
+        # input = self.data[idx,]
+        # label = self.y[idx,:]
+        # #process volume 越靠近1成交量越大
+        # volume_rank = self.stocks_feature['volume'][idx].rank(method='min')
+        # volume_rank_min_max = zscore(volume_rank.values)
+        # input.append(volume_rank_min_max)
+        # # process turnover_rate
+        # turnover_rate_rank = self.stocks_feature['turnover_rate'][idx].rank(method='min')
+        # turnover_rate_min_max = zscore(turnover_rate_rank.values)
+        # input.append(turnover_rate_min_max)
+        # # process turnover
+        # turnover_rank = self.stocks_feature['turnover'][idx].rank(method='min')
+        # turnover_rank_min_max = zscore(turnover_rank.values)
+        # input.append(turnover_rank_min_max)
 
         sample = np.array(input)
-        label = zscore(self.stocks_feature['y'][idx].values)
+        label = self.stocks_feature['y'][idx].values*100
+        input = torch.tensor(sample, dtype=torch.float32)
 
 
-        return torch.tensor(sample, dtype=torch.float32), torch.tensor(label, dtype=torch.float32).unsqueeze(0)
+        return input, torch.tensor(label, dtype=torch.float32).unsqueeze(0)
 
     def test_preprocess_v1(self, data):  #v1
         # 处理开盘价
         input = []
         for key in self.stocks_feature.keys():
             if key not in ['y']:
-                temp = zscore(data[key].values)
-                #temp = np.where(np.isnan(temp), 0, temp)
-                input.append(temp)
-        # process volume 越靠近1成交量越大
-        volume_rank = data['volume'].rank(method='min')
-        volume_rank_min_max = zscore(volume_rank.values)
-        input.append(volume_rank_min_max)
-        # process turnover_rate
-        turnover_rate_rank = data['turnover_rate'].rank(method='min')
-        turnover_rate_min_max = zscore(turnover_rate_rank.values)
-        input.append(turnover_rate_min_max)
-        # process turnover
-        turnover_rank = data['turnover'].rank(method='min')
-        turnover_rank_min_max = zscore(turnover_rank.values)
-        input.append(turnover_rank_min_max)
+                if key in ['open', 'close', 'high', 'low', 'next_open', 'volume', \
+                           'vwap', 'a_share_capital', 'float_a_share_capital', 'turnover_rate', 'turnover']:
+                    temp = zscore(data[key].values / data[key].values[0])
+                    temp = np.where(np.isnan(temp), 0, temp)
+                    input.append(temp)
+                else:
+                    temp = zscore(data[key].values)
+                    temp = np.where(np.isnan(temp), 0, temp)
+                    input.append(temp)
+        ema5_ema10 = zscore(data['EMA_5'].values - data['EMA_10'].values)
+        ema10_ema5 = zscore(data['EMA_10'].values - data['EMA_5'].values)
+        input.append(ema5_ema10)
+        input.append(ema10_ema5)
+        # # process volume 越靠近1成交量越大
+        # volume_rank = data['volume'].rank(method='min')
+        # volume_rank_min_max = zscore(volume_rank.values)
+        # input.append(volume_rank_min_max)
+        # # process turnover_rate
+        # turnover_rate_rank = data['turnover_rate'].rank(method='min')
+        # turnover_rate_min_max = zscore(turnover_rate_rank.values)
+        # input.append(turnover_rate_min_max)
+        # # process turnover
+        # turnover_rank = data['turnover'].rank(method='min')
+        # turnover_rank_min_max = zscore(turnover_rank.values)
+        # input.append(turnover_rank_min_max)
 
 
         label_y = data['y'].values
