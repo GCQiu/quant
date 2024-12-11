@@ -12,7 +12,7 @@ import logging
 from scipy.stats import zscore
 from losses import weighted_mse_loss
 import matplotlib.pyplot as plt
-from utils import val,val_NAT
+from utils import val_NAT
 from tensorboardX import SummaryWriter
 
 def logging_system(log_file):
@@ -406,8 +406,8 @@ if __name__ == '__main__':
         'turnover_rate_mid':[],
         'turnover_rate_std':[],
         'turnover_rate_up':[],
-        'volume_signal':[],
-        'type':[],
+        #'volume_signal':[],
+        #'type':[],
         'y': [],
     }
     input_dim = len(stock_feature_v1.keys())-1 # 假设输入包含开盘价、最高价、最低价、收盘价和成交量
