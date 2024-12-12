@@ -44,7 +44,7 @@ class SlidingWindowDataset(Dataset):
                         self.stocks_feature[feature].append(factor)
             for stock in tqdm.tqdm(self.data,desc="loading data"):
                 for feature in self.stocks_feature.keys():
-                    for i in range(30,len(stock) - window_size + 1,25):
+                    for i in range(30,len(stock) - window_size + 1,13):
                         factor = stock[feature][i:i + window_size]
                         self.stocks_feature[feature].append(factor)
 

@@ -400,12 +400,12 @@ if __name__ == '__main__':
         # 'turnover_rate_rank':[],
         'boll_upper_breakout':[],
         'boll_lower_breakout':[],
-        # 'slowk':[],
-        # 'slowd':[],
-        # 'slowj':[],
-        # 'turnover_rate_mid':[],
-        # 'turnover_rate_std':[],
-        # 'turnover_rate_up':[],
+        'slowk':[],
+        'slowd':[],
+        'slowj':[],
+        'turnover_rate_mid':[],
+        'turnover_rate_std':[],
+        'turnover_rate_up':[],
         #'volume_signal':[],
         #'type':[],
         'y': [],
@@ -415,12 +415,12 @@ if __name__ == '__main__':
     output_dim = 1  # 输出是收益率
     d_model = 256
     nhead = 16
-    num_encoder_layers = 4
+    num_encoder_layers = 3
     num_decoder_layers = 2
     dim_feedforward = 2048
     dropout = 0.1
     sequence_length = 10
-    batch_size = 32
+    batch_size = 128
     num_epochs = 100
     window_size = 20
     global logger
